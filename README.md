@@ -16,7 +16,7 @@ def deps do
 end
 ```
 
-## Usage in phoneix
+## Usage in phoenix
 
 Routes are added to the client according to the pipeline they use.
 
