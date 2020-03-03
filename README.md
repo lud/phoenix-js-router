@@ -18,10 +18,24 @@ end
 
 ## Usage in phoneix
 
-- Routes are added to the client according to the pipeline they use.
-- `pipelines` can be `:"$all"`.
-- Output directory must exist or compilation will fail.
-- `write_to` can be `:stdout`.
+Routes are added to the client according to the pipeline they use.
+
+The `pipelines` option (notice the plural) define which routes to
+export. Expected values are:
+
+- `:"$all"` (default) to export all routes.
+- A list of pipelines names (atoms): `[:api, :private_api]`. An empty
+  list will still create the javascript file, without any route.
+- A single pipeline name: `:api`.
+
+The `write_to` option defines where the javascript file will be
+outputted. Expected values are:
+
+- A path to a file, e.g. `"assets/js/services/phx-client.js"`. **The
+  directory must exist or the compilation will fail**.
+- `:stdout` to write the javascript result to the console for debug
+  purposes.
+- Default is `nil` and does not write anything.
 
 ```elixir
   use JsClient.Phoenix,
@@ -31,15 +45,20 @@ end
 
 ## Usage in javascript
 
-The file written by the plugin exports a single factory function that
-creates a web service with an adapter.
+The javascript file created by the plugin exports a single factory
+function that creates a web service with an adapter. The export is
+defined with the UMD format and should work as a Common Js or module
+import as well as if directly included with a `<script></script>` tag.
 
-The client was made to work with axios as adapter but can work with
-any code. The client itself does nothing http related.
+The client was made to work with the axios function itself as the
+default adapter but can work with any code. The client itself does
+nothing http related and just passes everything to the adapter
+function.
 
 Routes are defined in the client and accept:
 - Url parameters (required if the route has url parameters)
-- Data if the method supports data (everything besides GET or DELETE)
+- Data if the http method supports data (everything besides GET or
+  DELETE)
 - Options
 
 ```
@@ -63,7 +82,7 @@ query parameters, data, and options. Options are just merged on the
 request object so it is possible to override the url, query parameters
 or data.
 
-With these routes:
+These routes are used in the following example:
 
 ```elixir
   scope "/api", WowxWeb do
@@ -75,7 +94,7 @@ With these routes:
   end
 ```
 
-Here we will just log the request data passed to the adapter.
+Will just log give request data to the console:
 
 ```javascript
 import makeClient from './services/phx-client'
@@ -123,8 +142,10 @@ client.pageCreateName.post({name: "Robert"}, {some: "data"}, {someOption: 1})
 ```
 
 As you can see, our adapter receives a simple object of configuration
-that can be directly passed to the `axios` function to make a request,
-but is easily modifiable to implement other XHR libraries.
+that can be directly passed to the `axios` function to make a request.
+
+Thus it should be easy enough to implement a Superagent or a raw
+`fetch()` adapter.
 
 ## Javascript client example
 
@@ -173,7 +194,7 @@ function handleError(err) {
 }
 
 /**
- * Wrap an axios request to always use our handlers
+ * Wraps an axios request to use the handlers
  */
 function wrapAxiosReq(req) {
   return req
@@ -186,11 +207,11 @@ function wrapAxiosReq(req) {
  * 
  * When a route is called, we pass the request data to axios.
  * Then we wrap our axios promise to handle the response (or error)
- * with our handleResponse and handleError handlers.
+ * with the `handleResponse` and `handleError` handlers.
  * Finally this promise is returned
  */
 export default function createClient() {
-  const client = makeClient(function(request){
+  return makeClient(function(request){
     const req = axios(request)
     return wrapAxiosReq(req)
   })

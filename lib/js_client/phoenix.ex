@@ -2,7 +2,7 @@ defmodule JsClient.Phoenix do
   defmacro __using__(opts) do
     quote do
       @before_compile unquote(__MODULE__)
-      @js_client_pipelines unquote(opts[:pipelines]) || :all
+      @js_client_pipelines unquote(opts[:pipelines]) || :"$all"
       @js_client_output unquote(opts[:write_to]) || nil
     end
   end
@@ -14,18 +14,42 @@ defmodule JsClient.Phoenix do
 
     specs =
       case pipelines do
-        :"$all" -> routes
-        [] -> []
-        pipes -> routes |> Enum.filter(&intersercts?(&1.pipe_through, pipes))
+        :"$all" ->
+          routes
+
+        pl when is_atom(pl) ->
+          routes |> Enum.filter(&:lists.member(pl, &1.pipe_through))
+
+        [] ->
+          []
+
+        pipes when is_list(pipes) ->
+          routes |> Enum.filter(&intersercts?(&1.pipe_through, pipes))
+
+        other ->
+          raise "Invalid value #{inspect(other)} for #{inspect(__MODULE__)} option :pipelines in #{
+                  inspect(env.module)
+                }"
       end
       |> Enum.map(&to_define/1)
 
     js_code = to_js_module(specs)
 
     case output do
-      :stdout -> IO.puts(js_code)
-      path when is_binary(path) -> File.write!(output, js_code)
-      _ -> :ok
+      :stdout ->
+        IO.puts(js_code)
+
+      path when is_binary(path) ->
+        File.write!(output, js_code)
+
+      nil ->
+        IO.warn("#{inspect(__MODULE__)} option :write_to is not set in #{inspect(env.module)}")
+        :ok
+
+      other ->
+        raise "Invalid value #{inspect(other)} for #{inspect(__MODULE__)} option :write_to in #{
+                inspect(env.module)
+              }"
     end
   end
 
