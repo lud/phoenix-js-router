@@ -4,6 +4,7 @@ defmodule JsClient.Phoenix do
       @before_compile unquote(__MODULE__)
       @js_client_pipelines unquote(opts[:pipelines]) || :"$all"
       @js_client_output unquote(opts[:write_to]) || nil
+      @js_client_global_name unquote(opts[:global_name]) || "phxRoutes"
     end
   end
 
@@ -11,6 +12,7 @@ defmodule JsClient.Phoenix do
     pipelines = env.module |> Module.get_attribute(:js_client_pipelines)
     routes = env.module |> Module.get_attribute(:phoenix_routes)
     output = env.module |> Module.get_attribute(:js_client_output)
+    global_name = env.module |> Module.get_attribute(:js_client_global_name)
 
     specs =
       case pipelines do
@@ -33,7 +35,7 @@ defmodule JsClient.Phoenix do
       end
       |> Enum.map(&to_define/1)
 
-    js_code = to_js_module(specs)
+    js_code = to_js_module(specs, global_name)
 
     case output do
       :stdout ->
@@ -53,7 +55,7 @@ defmodule JsClient.Phoenix do
     end
   end
 
-  defp to_define(%{helper: helper, plug_opts: action, verb: verb, path: path} = route)
+  defp to_define(%{helper: helper, plug_opts: action, verb: verb, path: path})
        when is_atom(action) do
     action = to_string(action)
     verb = to_string(verb)
@@ -65,7 +67,7 @@ defmodule JsClient.Phoenix do
     {to_camel(helper) <> to_pascal(action), verb, path, path_match, params_defs}
   end
 
-  defp to_js_module(specs) do
+  defp to_js_module(specs, global_name) do
     definers =
       specs
       |> Enum.map(fn {route, method, path, path_match, params_defs} ->
@@ -97,7 +99,7 @@ defmodule JsClient.Phoenix do
     (function (global, factory) {
       typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
       typeof define === 'function' && define.amd ? define(factory) :
-      (global = global || self, global.howLongUntilLunch = factory());
+      (global = global || self, global.#{global_name} = factory());
     }(this, (function () { 'use strict';
 
     function makeUrl(segments, urlParams) {
@@ -183,40 +185,13 @@ defmodule JsClient.Phoenix do
     end
   end
 
-  @re_Web ~r/(.+)Web$/
-  @re_Controller ~r/(.+)Controller$/
-
-  defp find_scope([h | [next | _] = t]) do
-    case Regex.run(@re_Web, h) do
-      [_, mod] ->
-        controller =
-          case find_controller(t) do
-            {:ok, controller} ->
-              {mod, controller}
-
-            _ ->
-              {mod, next}
-          end
-
-      _ ->
-        find_scope(t)
-    end
-  end
-
-  defp find_controller([h | t]) do
-    case Regex.run(@re_Controller, h) do
-      [_, mod] -> {:ok, mod}
-      _ -> find_controller(t)
-    end
-  end
-
   defp to_camel(name) do
     name
     |> Macro.camelize()
     |> lcfirst()
   end
 
-  def to_pascal(name), do: Macro.camelize(name)
+  defp to_pascal(name), do: Macro.camelize(name)
 
   defp lcfirst(<<h::utf8, t::binary>>),
     do: String.downcase(<<h::utf8>>) <> t

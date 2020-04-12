@@ -4,10 +4,11 @@ defmodule JsClient.MixProject do
   def project do
     [
       app: :js_client,
-      version: "1.0.1",
+      version: "1.0.2",
       elixir: "~> 1.8",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      docs: docs(),
       package: package()
     ]
   end
@@ -34,5 +35,11 @@ defmodule JsClient.MixProject do
       A simple macro to crate a javascript client for Phoenix routes
       """
     }
+  end
+
+  defp docs do
+    [
+      main: "JsClient"
+    ]
   end
 end

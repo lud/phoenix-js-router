@@ -1,5 +1,7 @@
 # JsClient
 
+<!-- mdoc -->
+
 JsClient implements an Elixir macro to generate a javascript
 webservice client from a Phoenix router module.
 
@@ -42,6 +44,10 @@ outputted. Expected values are:
     pipelines: [:api],
     write_to: "assets/js/services/phx-client.js"
 ```
+
+The `global_name` option set the name of the routes client if directly
+included through a `<script></script>` tag. It must be a valid
+javascript variable name. Defaults to `"pxhRoutes"`.
 
 ## Usage in javascript
 
@@ -175,7 +181,7 @@ function handleResponse (res) {
   if (body.status === 'error') {
     const { reason, detail } = body
     throw new ErrorResponse(reason, detail)
-  } 
+  }
 
   throw new Error(`Bad response format, no status: ${body.status}`)
 }
@@ -204,7 +210,7 @@ function wrapAxiosReq(req) {
 
 /**
  * Create a client
- * 
+ *
  * When a route is called, we pass the request data to axios.
  * Then we wrap our axios promise to handle the response (or error)
  * with the `handleResponse` and `handleError` handlers.
